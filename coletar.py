@@ -41,10 +41,16 @@ def main():
                 analisados += 1
 
                 if aval and not ja_alertado(info["id"], info["preco"]):
-                    enviar_promocao(info, aval)
-                    registrar_alerta(info["id"], info["preco"])
-                    alertas += 1
-                    time.sleep(1)
+                    status = enviar_promocao(info, aval)
+                    if status in (200, 204):
+                        registrar_alerta(info["id"], info["preco"])
+                        alertas += 1
+                        time.sleep(1)
+                    else:
+                        print(
+                            f"Alerta não registrado para {info['id']}: "
+                            f"falha no envio ao Discord (status={status})."
+                        )
 
     print(f"Pronto: {analisados} produtos analisados, {alertas} alertas enviados.")
 

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+STATUS_OK = {200, 204}
 
 FRASES = [
     "Olá, humano repugnante. Achei uma promoção do Mercado Livre pra você. Dá uma olhada se quiser, se não quiser, não me importo.",
@@ -43,6 +44,10 @@ def enviar_oferta(info):
 
 
 def enviar_promocao(info, aval):
+    if not WEBHOOK_URL:
+        print("Erro no Discord: DISCORD_WEBHOOK_URL não configurado.")
+        return None
+
     embed = {
         "title": "🔥 " + info["nome"][:240],
         "url": info["link"],
@@ -65,5 +70,15 @@ def enviar_promocao(info, aval):
         embed["image"] = {"url": info["imagem"]}
 
     payload = {"content": random.choice(FRASES), "embeds": [embed]}
-    r = requests.post(WEBHOOK_URL, json=payload)
+    try:
+        r = requests.post(WEBHOOK_URL, json=payload, timeout=20)
+    except requests.RequestException as exc:
+        print(f"Erro ao enviar promoção para o Discord: {exc}")
+        return None
+
+    if r.status_code not in STATUS_OK:
+        print(f"Discord recusou a promoção: HTTP {r.status_code} - {r.text[:300]}")
+    else:
+        print(f"Promoção enviada ao Discord com sucesso: HTTP {r.status_code}")
+
     return r.status_code
