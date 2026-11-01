@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+teste.db
+historico_teste.db
+teste.py
+teste_*.py
+ml_token.py
+ml_catalogo.py
+ml_diag.py
+ml_busca.py
