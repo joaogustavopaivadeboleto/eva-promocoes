@@ -1,0 +1,41 @@
+name: Coletar promoções
+
+on:
+  schedule:
+        - cron: "0 11,15,19,23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: coletar
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar coletor
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python coletar.py
+
+      - name: Guardar histórico
+        run: |
+          git config user.name "eva-bot"
+          git config user.email "eva-bot@users.noreply.github.com"
+          git add historico.db
+          git diff --staged --quiet || git commit -m "Atualiza histórico de preços"
+          git push
