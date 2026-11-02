@@ -45,6 +45,29 @@ BUSCAS = [
 ]
 
 
+def buscar_pagina(headers, busca, pagina):
+    """Busca uma página; se o Mercado Livre responder 429 (excesso de
+    consultas), espera e tenta de novo, até 5 vezes."""
+    for tentativa in range(5):
+        r = requests.get(
+            f"{API}/products/search",
+            headers=headers,
+            params={
+                "status": "active",
+                "site_id": "MLB",
+                "q": busca,
+                "offset": pagina * 10,
+            },
+        )
+        if r.status_code != 429:
+            break
+        espera = 5 * (tentativa + 1)
+        print(f"  429 em '{busca}', esperando {espera}s...")
+        time.sleep(espera)
+    time.sleep(1)  # pausa entre buscas
+    return r
+
+
 def main():
     token = gerar_token()
     headers = {"Authorization": f"Bearer {token}"}
@@ -58,21 +81,13 @@ def main():
         achados = 0
 
         for pagina in range(PAGINAS):
-            r = requests.get(
-                f"{API}/products/search",
-                headers=headers,
-                params={
-                    "status": "active",
-                    "site_id": "MLB",
-                    "q": busca,
-                    "offset": pagina * 10,
-                },
-            )
+            r = buscar_pagina(headers, busca, pagina)
             if r.status_code != 200:
                 print("Erro na busca:", busca, r.status_code)
                 break
 
             for p in r.json().get("results", []):
+                time.sleep(0.2)  # evita estourar o limite de consultas
                 info = buscar_produto(p["id"], token)
                 if not info or parece_lixo(info["nome"], busca, liberar, bloquear):
                     continue
