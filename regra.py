@@ -1,3 +1,4 @@
+import re
 import unicodedata
 
 MIN_OBSERVACOES = 3
@@ -14,10 +15,14 @@ def normalizar(texto):
     return "".join(c for c in texto if unicodedata.category(c) != "Mn")
 
 
-def parece_lixo(nome, busca):
+def parece_lixo(nome, busca, liberar=(), bloquear=()):
+    """liberar: palavras da lista padrão que NÃO devem bloquear nesta busca.
+    bloquear: palavras extras que devem bloquear só nesta busca."""
     nome_n = normalizar(nome)
-    if any(p in nome_n for p in PALAVRAS_PROIBIDAS):
-        return True
+    proibidas = [p for p in PALAVRAS_PROIBIDAS if p not in liberar] + list(bloquear)
+    for p in proibidas:
+        if re.search(rf"\b{re.escape(normalizar(p))}s?\b", nome_n):
+            return True
     return not all(palavra in nome_n for palavra in normalizar(busca).split())
 
 

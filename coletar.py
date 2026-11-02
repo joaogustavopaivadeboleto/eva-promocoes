@@ -5,8 +5,44 @@ from db import salvar_preco, estatisticas, registrar_alerta, ja_alertado
 from regra import avaliar, parece_lixo
 from enviar import enviar_promocao
 
-BUSCAS = ["mouse gamer logitech", "teclado mecânico redragon", "headset gamer"]
 PAGINAS = 2  # 10 produtos por página
+
+LEGO = {
+    "liberar": ["brinquedo", "miniatura"],
+    "bloquear": ["compativel", "similar"],
+}
+
+# Cada busca: "q" = termos (o nome do produto precisa conter TODAS as palavras).
+# "liberar" = palavras da lista proibida que não valem nessa busca.
+# "bloquear" = palavras extras proibidas só nessa busca.
+BUSCAS = [
+    # Peças de computador
+    {"q": "placa de vídeo"},
+    {"q": "ssd nvme"},
+    {"q": "memória ram ddr5"},
+    {"q": "processador ryzen"},
+    {"q": "gabinete gamer"},
+    {"q": "fonte 650w"},
+    # Cadeiras
+    {"q": "cadeira gamer"},
+    {"q": "cadeira escritório"},
+    # Periféricos
+    {"q": "mouse gamer logitech"},
+    {"q": "teclado mecânico redragon"},
+    {"q": "headset gamer"},
+    {"q": "monitor gamer"},
+    {"q": "webcam"},
+    # Jogos
+    {"q": "ps5 físico"},
+    {"q": "ps4 físico"},
+    {"q": "switch físico"},
+    {"q": "xbox series físico"},
+    # LEGO
+    {"q": "lego technic", **LEGO},
+    {"q": "lego star wars", **LEGO},
+    {"q": "lego icons", **LEGO},
+    {"q": "lego city", **LEGO},
+]
 
 
 def main():
@@ -15,7 +51,12 @@ def main():
     analisados = 0
     alertas = 0
 
-    for busca in BUSCAS:
+    for cfg in BUSCAS:
+        busca = cfg["q"]
+        liberar = cfg.get("liberar", ())
+        bloquear = cfg.get("bloquear", ())
+        achados = 0
+
         for pagina in range(PAGINAS):
             r = requests.get(
                 f"{API}/products/search",
@@ -33,12 +74,13 @@ def main():
 
             for p in r.json().get("results", []):
                 info = buscar_produto(p["id"], token)
-                if not info or parece_lixo(info["nome"], busca):
+                if not info or parece_lixo(info["nome"], busca, liberar, bloquear):
                     continue
 
                 aval = avaliar(info, estatisticas(info["id"]))  # antes de salvar
                 salvar_preco(info)
                 analisados += 1
+                achados += 1
 
                 if aval and not ja_alertado(info["id"], info["preco"]):
                     status = enviar_promocao(info, aval)
@@ -51,6 +93,8 @@ def main():
                             f"Alerta não registrado para {info['id']}: "
                             f"falha no envio ao Discord (status={status})."
                         )
+
+        print(f"  {busca}: {achados} produtos com oferta")
 
     print(f"Pronto: {analisados} produtos analisados, {alertas} alertas enviados.")
 
